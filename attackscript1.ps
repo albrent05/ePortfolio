@@ -1,32 +1,42 @@
 # Attack Script 1 -- Josh Kerley, Alberant Pangan, Matthew Hunt
 # Function to simulate ATT&CK technique known as T1083 which is used by LaceTempest and Clop
+
 function attackCode {
     # Simulate attack for technique T1083 (File and Directory Discovery)
-ls -recurse > "MediSecureComputerInformation.txt"  # Saves to output.txt -- in real life they would call this something else to hide it
- 
-# Full command with redirection
-get-childitem -recurse > "MediSecureComputerInformation.txt"  # Saves to output.txt -- in real life they would call this something else to hide it
- 
-# Shortcut with redirection
-gci -recurse > "MediSecureComputerInformation.txt"  # Saves to output.txt -- in real life they would call this something else to hide it
- 
- 
+
+    # Define output file path
+    $filePath = "C:\Users\vagrant\AppData\Local\Temp\MediSecureComputerInformation.txt"  # Use a full path for consistency
+
+    # Check if file exists, if not create it
+    if (-not (Test-Path $filePath)) {
+        New-Item -Path $filePath -ItemType File
+    }
+
+    # Use the defined file path for output and append data
+    ls -recurse | Out-File -FilePath $filePath -Append  # Appending output to the file
+    
+    # Full command with redirection
+    get-childitem -recurse | Out-File -FilePath $filePath -Append  # Appending output to the file
+
+    # Shortcut with redirection
+    gci -recurse | Out-File -FilePath $filePath -Append  # Appending output to the file
 }
 
 # Function to detect events in Sysmon logs
 function detectAttack {
     # Filter Sysmon logs for entries containing T1083
-    Get-WinEvent -LogName "Microsoft-Windows-Sysmon/Operational" | # goes to sysmon logs
-    Select-Object -First 3 | # only picking the first one to prevent false postives
+    Get-WinEvent -LogName "Microsoft-Windows-Sysmon/Operational" | 
+    Select-Object -First 3 | 
     Format-List
 }
 
-# Calling functions from ps input
+# Main execution logic
 if ($args[0] -eq "T1083") {
-    attackCode #in real life this would execute by itself instead of being called by powershell, unless the attack used a trojan and had access control where he could execute it himself
+    attackCode # In real life, this would execute by itself instead of being called by PowerShell
 } elseif ($args[0] -eq "detect") {
-    detectAttack # just calls the detection function to find sysmon logs
+    detectAttack # Calls the detection function to find Sysmon logs
 } else {
     Write-Host "Usage: script.ps1 T1083|detect"
 }
+
 
