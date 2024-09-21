@@ -1,5 +1,5 @@
 # Attack Script 1 -- Josh Kerley, Alberant Pangan, Matthew Hunt
-# Function to simulate ATT&CK technique known as T1083 which is used by LaceTempest and Clop
+# Function to simulate ATT&CK technique known as T1083 which is used by LaceTempest and the Clop Ransomware
 
 function attackCode {
     # Simulate attack for technique T1083 (File and Directory Discovery)
@@ -7,19 +7,19 @@ function attackCode {
     # Define output file path
     $filePath = "C:\Users\vagrant\AppData\Local\Temp\MediSecureComputerInformation.txt"  # Use a full path for consistency
 
-    # Check if file exists, if not create it
+    # Check if file exists (needed later to append data to the list instead of overwriting), also creates the file to write to the list
     if (-not (Test-Path $filePath)) {
         New-Item -Path $filePath -ItemType File
     }
 
     # Use the defined file path for output and append data
-    ls -recurse | Out-File -FilePath $filePath -Append  # Appending output to the file
+    ls -recurse | Out-File -FilePath $filePath -Append  # Obtains secure information and appending output to the file
     
     # Full command with redirection
-    get-childitem -recurse | Out-File -FilePath $filePath -Append  # Appending output to the file
+    get-childitem -recurse | Out-File -FilePath $filePath -Append  # Obtains secure information and appending output to the file
 
     # Shortcut with redirection
-    gci -recurse | Out-File -FilePath $filePath -Append  # Appending output to the file
+    gci -recurse | Out-File -FilePath $filePath -Append  # Obtains secure information and appending output to the file
 }
 
 # Function to detect events in Sysmon logs
