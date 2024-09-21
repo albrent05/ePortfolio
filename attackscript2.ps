@@ -1,0 +1,41 @@
+# Attack Script 2 -- Josh Kerley, Alberant Pangan, Matthew Hunt
+# Function to simulate ATT&CK technique known as T1115 which is used by LaceTempest and the Clop Ransomware
+
+function attackCode {
+    # Simulate attack for technique T1115 (File and Directory Discovery)
+
+    # Define output file path
+    $filePath = "C:\Users\vagrant\AppData\Local\Temp\MediSecureComputerClipboard.txt"  # Use a full path for consistency
+
+    # Check if file exists (needed later to append data to the list instead of overwriting), also creates the file to write to the list
+    if (-not (Test-Path $filePath)) {
+        New-Item -Path $filePath -ItemType File
+    }
+
+    # Capture the process list and clipboard contents
+    $processList = Get-Process
+    $clipboardContent = Get-Clipboard
+
+    # Write the process list and clipboard content to the file
+    $processList | Out-File -FilePath $filePath -Append  # Append process list
+    $clipboardContent | Out-File -FilePath $filePath -Append  # Append clipboard content
+}
+
+# Function to detect events in Sysmon logs
+function detectAttack {
+    # Filter Sysmon logs for entries containing T1115
+    Get-WinEvent -LogName "Microsoft-Windows-Sysmon/Operational" | 
+    Select-Object -First 3 | 
+    Format-List
+}
+
+# Main execution logic
+if ($args[0] -eq "T1115") {
+    attackCode # In real life, this would execute by itself instead of being called by PowerShell
+} elseif ($args[0] -eq "detect") {
+    detectAttack # Calls the detection function to find Sysmon logs
+} else {
+    Write-Host "Usage: script2.ps1 T1115|detect"
+}
+
+
